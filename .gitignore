@@ -1,5 +1,38 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Virtual environments
 .venv/
 venv/
+env/
+
+# Secrets and keys (never commit these)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# Databases, backups and data exports (patient or stock data)
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.bak
+*.csv
+*.xlsx
+data_private/
+
+# Logs
+*.log
+
+# Vercel
 .vercel/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
