@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Overview{% endblock %}
+{% block crumb %}Overview{% endblock %}
+{% block top_badge %}<span class="demo-badge">Demo data</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Your pharmacy, at a glance</h1>
+    <p class="muted sm">{{ branch.name }} &middot; {{ today.strftime('%A') }}, {{ today.day }} {{ today.strftime('%B') }} {{ today.year }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="#">{{ icon('package', 14) }} Receive stock</a>
+    <a class="btn primary" href="#">{{ icon('plus', 14) }} New sale</a>
+  </div>
+</div>
+
+<section class="kpis four">
+  <div class="card kpi">
+    <div class="kpi-top"><span>Today's sales</span><span class="kpi-ic green">{{ icon('bag', 14) }}</span></div>
+    <div class="kpi-value"><small>UGX</small> {{ o.sales_today|num }}</div>
+    <div class="muted xs">{{ o.sales_count }} sales &middot; UGX {{ o.sales_yesterday|num }} yesterday</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-top"><span>Available stock value</span><span class="kpi-ic green">{{ icon('package', 14) }}</span></div>
+    <div class="kpi-value"><small>UGX</small> {{ o.stock_value|num }}</div>
+    <div class="muted xs">At cost &middot; excludes held stock</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-top"><span>Below reorder point</span><span class="kpi-ic amber">{{ icon('package', 14) }}</span></div>
+    <div class="kpi-value">{{ o.below_reorder }} medicines</div>
+    <div class="muted xs">{{ o.out_of_stock }} out of stock &middot; {{ o.running_low }} running low</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-top"><span>Expiring within 90 days</span><span class="kpi-ic amber">{{ icon('calendar', 14) }}</span></div>
+    <div class="kpi-value">{{ o.expiring_batches }} batches</div>
+    <div class="muted xs">Review earliest-expiry stock first</div>
+  </div>
+</section>
+
+<section class="grid-main">
+  <div class="card pad chart-card">
+    <div class="card-head">
+      <strong>Sales over the last 7 days</strong>
+      <span class="muted xs">{{ o.week_range }} {{ icon('calendar', 12) }}</span>
+    </div>
+    <div class="kpi-value mid"><small>UGX</small> {{ week_total|num }}</div>
+    <div class="chart">
+      <div class="y-axis">
+        <span>1.2m</span><span>800k</span><span>400k</span><span>0</span>
+      </div>
+      <div class="plot">
+        <div class="gridline" style="bottom:0"></div>
+        <div class="gridline" style="bottom:33.33%"></div>
+        <div class="gridline" style="bottom:66.66%"></div>
+        <div class="gridline" style="bottom:100%"></div>
+        <div class="bars">
+          {% for day, dnum, value in o.week %}
+          <div class="bar-col">
+            <div class="bar {{ 'today' if loop.last }}" style="height: {{ (value / peak * 100)|round(1) }}%" title="UGX {{ value|num }}"></div>
+            <div class="bar-label {{ 'today' if loop.last }}">{{ day }}<br><span>{{ dnum }}</span></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card pad attention">
+    <div class="card-head">
+      <strong>Needs attention</strong>
+      <span class="pill amber">3 priorities</span>
+    </div>
+    <div class="att-item">
+      <span class="kpi-ic amber">{{ icon('package', 14) }}</span>
+      <div>
+        <strong>Reorder {{ o.below_reorder }} medicines</strong>
+        <div class="muted xs">Amoxicillin: 80 capsules left &middot; reorder at 200</div>
+        <a class="link xs" href="{{ url_for('inventory', status='low') }}">Review low stock &rarr;</a>
+      </div>
+    </div>
+    <div class="att-item">
+      <span class="kpi-ic amber">{{ icon('calendar', 14) }}</span>
+      <div>
+        <strong>Review {{ o.expiring_batches }} batches expiring within 90 days</strong>
+        <div class="muted xs">Earliest: Amoxicillin &middot; 31 Dec 2026</div>
+        <a class="link xs" href="{{ url_for('inventory') }}">Open expiry list &rarr;</a>
+      </div>
+    </div>
+    <div class="att-foot muted xs">
+      {{ icon('archive', 14) }}
+      <span>3 held batches &middot; 2 quarantined, 1 expired. Excluded from available stock.</span>
+    </div>
+  </div>
+</section>
+
+<section class="grid-bottom">
+  <div class="card pad">
+    <div class="card-head">
+      <strong>Recent activity</strong>
+      <a class="link xs" href="#">View movement history &rarr;</a>
+    </div>
+    <ul class="activity">
+      {% for ic, title, sub, time in o.activity %}
+      <li>
+        <span class="act-ic">{{ icon({'package': 'package', 'bag': 'bag', 'archive': 'archive', 'check': 'check'}[ic], 14) }}</span>
+        <div class="act-text">
+          <strong>{{ title }}</strong>
+          <div class="muted xs">{{ sub }}</div>
+        </div>
+        <span class="muted xs">{{ time }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card pad">
+    <div class="card-head">
+      <strong>Today's payments</strong>
+      <span class="muted xs">{{ today.day }} {{ today.strftime('%b') }}</span>
+    </div>
+    <div class="paybar">
+      {% for name, amount in o.payments %}
+        <i class="seg s{{ loop.index }}" style="width: {{ (amount / payments_total * 100)|round(1) }}%"></i>
+      {% endfor %}
+    </div>
+    <ul class="pay-list">
+      {% for name, amount in o.payments %}
+      <li><span><i class="key k{{ loop.index }}"></i>{{ name }}</span><strong>UGX {{ amount|num }}</strong></li>
+      {% endfor %}
+    </ul>
+    <p class="muted xs">Recorded payment methods only; no connected payment services.</p>
+  </div>
+</section>
+
+<p class="foot-note muted xs">{{ icon('info', 13) }} Pick by FEFO: first expiry, first out. Keep expired and quarantined stock segregated from saleable stock.</p>
+{% endblock %}

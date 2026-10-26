@@ -1,0 +1,98 @@
+{% from "_icons.html" import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Kampala Care{% endblock %} - Kampala Care Pharmacy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">{{ icon('plus', 18) }}</span>
+      <div>
+        <div class="brand-name">Kampala Care</div>
+        <div class="brand-sub">PHARMACY</div>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="tiny-label">WORKSPACE</div>
+      <div class="workspace-row">
+        <strong>{{ branch.name }}</strong>
+        {{ icon('updown', 14) }}
+      </div>
+      <div class="muted xs">{{ branch.location }}</div>
+    </div>
+
+    <div class="tiny-label manage">MANAGE</div>
+    <nav class="nav">
+      {% set items = [
+        ('overview', 'Overview', 'grid', url_for('overview')),
+        ('inventory', 'Inventory', 'capsule', url_for('inventory')),
+        ('sales', 'Sales', 'bag', url_for('placeholder', section='sales')),
+        ('purchases', 'Purchases', 'package', url_for('placeholder', section='purchases')),
+        ('suppliers', 'Suppliers', 'truck', url_for('placeholder', section='suppliers')),
+        ('reports', 'Reports', 'chart', url_for('placeholder', section='reports')),
+      ] %}
+      {% for key, label, ic, href in items %}
+        <a href="{{ href }}" class="nav-item {{ 'active' if page == key }}">
+          {{ icon(ic, 16) }}<span>{{ label }}</span>
+          {% if page == key %}<i class="dot"></i>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-foot">
+      <a href="{{ url_for('placeholder', section='settings') }}" class="nav-item {{ 'active' if page == 'settings' }}">
+        {{ icon('sliders', 16) }}<span>Settings</span>
+      </a>
+      <div class="team">
+        <span class="avatar">{{ icon('user', 14) }}</span>
+        <div>
+          <strong>Pharmacy team</strong>
+          <div class="muted xs">Branch workspace</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span class="muted">Workspace</span>
+        {{ icon('right', 12) }}
+        <strong>{% block crumb %}{% endblock %}</strong>
+      </div>
+      <div class="top-right">
+        {% block top_badge %}{% endblock %}
+        <span class="muted xs">UGX &middot; East Africa Time</span>
+        <button class="icon-btn" aria-label="Notifications">{{ icon('bell', 16) }}</button>
+      </div>
+    </header>
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<script>
+  document.querySelectorAll('tr[data-href]').forEach(function (tr) {
+    tr.addEventListener('click', function () { window.location = tr.dataset.href; });
+  });
+  var search = document.getElementById('search');
+  if (search) {
+    document.addEventListener('keydown', function (e) {
+      if (e.key === '/' && document.activeElement !== search) {
+        e.preventDefault();
+        search.focus();
+      }
+    });
+  }
+</script>
+</body>
+</html>

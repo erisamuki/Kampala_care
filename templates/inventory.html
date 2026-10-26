@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Inventory{% endblock %}
+{% block crumb %}Inventory{% endblock %}
+
+{% macro chip(status) -%}
+  {%- if status == 'low' %}<span class="chip amber">Low stock</span>
+  {%- elif status == 'in_stock' %}<span class="chip green">In stock</span>
+  {%- elif status == 'quarantined' %}<span class="chip grey">Quarantined</span>
+  {%- elif status == 'expired' %}<span class="chip red">Expired</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Inventory</h1>
+    <p class="muted sm">Know what is on your shelves, down to the batch.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('export_csv', tab=tab, q=q, category=category, status=status) }}">{{ icon('download', 14) }} Export</a>
+    <a class="btn primary" href="#">{{ icon('plus', 14) }} Receive stock</a>
+  </div>
+</div>
+
+<section class="card stat-strip">
+  <div><strong>{{ stats.medicines }}</strong><span class="muted xs">Medicines</span></div>
+  <div><strong>{{ stats.batches }}</strong><span class="muted xs">Available batches</span></div>
+  <div class="amber-t"><strong>{{ stats.below_reorder }}</strong><span class="muted xs">Below reorder point</span></div>
+  <div class="amber-t"><strong>{{ stats.expiring_90 }}</strong><span class="muted xs">Expire within 90 days</span></div>
+</section>
+
+<div class="tabs-row">
+  <nav class="tabs">
+    <a class="{{ 'active' if tab == 'available' }}" href="{{ url_for('inventory', tab='available') }}">Available stock <em>{{ tab_totals.available }}</em></a>
+    <a class="{{ 'active' if tab == 'quarantined' }}" href="{{ url_for('inventory', tab='quarantined') }}">Quarantined <em>{{ tab_totals.quarantined }}</em></a>
+    <a class="{{ 'active' if tab == 'expired' }}" href="{{ url_for('inventory', tab='expired') }}">Expired <em>{{ tab_totals.expired }}</em></a>
+  </nav>
+  <span class="muted xs">Held stock is excluded from available quantities.</span>
+</div>
+
+<form class="filters" method="get" action="{{ url_for('inventory') }}">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <label class="search">
+    {{ icon('search', 15) }}
+    <input id="search" type="text" name="q" value="{{ q }}" placeholder="Search medicine, strength or batch..." autocomplete="off">
+    <kbd>/</kbd>
+  </label>
+  <select name="category" onchange="this.form.submit()">
+    <option value="">All categories</option>
+    {% for c in categories %}<option value="{{ c }}" {{ 'selected' if c == category }}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">All stock statuses</option>
+    <option value="in_stock" {{ 'selected' if status == 'in_stock' }}>In stock</option>
+    <option value="low" {{ 'selected' if status == 'low' }}>Low stock</option>
+  </select>
+  <span class="sort muted xs">{{ icon('updown', 13) }} Expiry: earliest first</span>
+</form>
+
+<div class="inv-grid">
+  <section class="card table-card">
+    <table class="inv">
+      <thead>
+        <tr>
+          <th>Medicine / form</th><th>Batch</th><th>Expiry</th>
+          <th>Available qty</th><th>Stock status</th><th>Unit price (UGX)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="{{ 'sel' if selected and r.batch == selected.batch }}"
+            data-href="{{ url_for('inventory', tab=tab, q=q, category=category, status=status, batch=r.batch) }}">
+          <td>
+            <div class="med {{ 'sel-name' if selected and r.batch == selected.batch }}">{{ r.medicine }}</div>
+            <div class="muted xs">{{ r.sub }}</div>
+          </td>
+          <td>{{ r.batch }}</td>
+          <td>
+            {{ r.expiry|fdate }}
+            {% if days_left(r.expiry) >= 0 and days_left(r.expiry) <= 90 %}
+              <div class="muted xs">{{ days_left(r.expiry) }} days left</div>
+            {% elif days_left(r.expiry) < 0 %}
+              <div class="muted xs">{{ -days_left(r.expiry) }} days ago</div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="med">{{ r.qty|num }} {{ r.unit }}</div>
+            <div class="muted xs">{{ r.pack }}</div>
+          </td>
+          <td>{{ chip(r.status) }}</td>
+          <td>
+            <div class="med">{{ r.price|num }}</div>
+            <div class="muted xs">/ {{ r.price_unit }}</div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty muted">No batches match these filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="table-foot">
+      <span class="muted xs">
+        {% if rows %}Showing 1&ndash;{{ rows|length }} of {{ total }} {{ tab }} batches{% else %}Showing 0 batches{% endif %}
+      </span>
+      {% if tab == 'available' and not (q or category or status) %}
+      <div class="pager">
+        <button type="button" aria-label="Previous">{{ icon('left', 12) }}</button>
+        <button type="button" class="on">1</button>
+        <button type="button">2</button>
+        <span>... 24</span>
+        <button type="button" aria-label="Next">{{ icon('right', 12) }}</button>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if selected %}
+  {% set s = selected %}
+  <aside class="card detail">
+    <div class="detail-head">
+      <span class="tiny-label">SELECTED BATCH</span>
+      <a class="x" href="{{ url_for('inventory', tab=tab, q=q, category=category, status=status, batch='none') }}" aria-label="Close">{{ icon('x', 15) }}</a>
+    </div>
+    <h2>{{ s.medicine }}</h2>
+    <div class="muted xs">{{ s.sub.split(' · ')[0] }} &middot; {{ s.batch }}</div>
+    <div class="chips">
+      {{ chip(s.status) }}
+      {% if days_left(s.expiry) >= 0 and days_left(s.expiry) <= 90 %}
+        <span class="chip amber">Expires in {{ days_left(s.expiry) }} days</span>
+      {% endif %}
+    </div>
+
+    {% if tab == 'available' %}
+    <div class="tip">
+      <div class="tip-title">{{ icon('check', 14) }} Pick this batch first</div>
+      <p>Earliest expiry for this medicine. Use FEFO: first expiry, first out.</p>
+    </div>
+    {% elif s.note %}
+    <div class="tip grey"><div class="tip-title">{{ icon('archive', 14) }} Held: {{ s.note }}</div>
+      <p>Held stock cannot be sold.</p></div>
+    {% endif %}
+
+    <dl class="facts">
+      <div><dt>Available</dt><dd>{{ s.qty|num }} {{ s.unit }}</dd></div>
+      <div><dt>Pack conversion</dt><dd>{{ s.conversion }}</dd></div>
+      <div><dt>Reorder point<sup>1</sup></dt><dd>{{ s.reorder }}</dd></div>
+      <div><dt>Expiry</dt><dd>{{ s.expiry|fdate }}</dd></div>
+      <div><dt>Unit selling price</dt><dd>UGX {{ s.price|num }} / {{ s.price_unit }}</dd></div>
+    </dl>
+
+    <div class="sec">
+      <strong class="sm">Supplier &amp; receipt</strong>
+      <div class="muted xs">{{ s.supplier }}</div>
+      <a class="link xs" href="#">{{ s.grn }} &middot; {{ s.grn_date }} {{ icon('external', 10) }}</a>
+      <div class="muted xs">Received {{ s.received }}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-row"><strong class="sm">Latest movement</strong><a class="link xs" href="#">View all &rarr;</a></div>
+      <div class="xs">{{ s.move[0] }} &middot; {{ s.move[1] }}</div>
+      <div class="muted xs">{{ s.move[2] }} &middot; {{ s.move[3] }}</div>
+    </div>
+
+    <a class="btn wide" href="#">{{ icon('sliders', 14) }} Record stock adjustment</a>
+    <p class="muted xs fn"><sup>1</sup> Reorder point is set per medicine, across available batches.</p>
+  </aside>
+  {% else %}
+  <aside class="card detail empty muted">Select a batch to see its details.</aside>
+  {% endif %}
+</div>
+
+<p class="foot-note muted xs">{{ icon('info', 13) }} Available stock only. Expired and quarantined batches are held separately and cannot be sold.</p>
+{% endblock %}
